@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import argparse
 import warnings
 import datetime
@@ -7,8 +7,14 @@ import json
 import time
 import cv2
 import os
+import average_image
+import average_image_fast
+
 
 # construct the argument parser and parse the arguments
+# export DISPLAY=localhost:0.0
+# ./capture_motion_file.py -c config.json -o ./
+
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--conf", required=True,
         help="path to the JSON configuration file")
@@ -34,36 +40,39 @@ avg = None
 lastUploaded = datetime.datetime.now()
 consecFrames = 0
 motionCounter = 0
-max_iamge_buffer  = 50
-average_files_window = []
+
 counter = 0
 not_occupied_counter = 0
 occupied_counter = 0
 mirror = False
-
-# relevant_path ='/home/mdm/dev/workspaces/eclipse_2019_09/piexp_git/local/uploads/'
-# included_extensions = ['jpg','jpeg', 'bmp', 'png', 'gif']
-# file_names = [fn for fn in os.listdir(relevant_path)
-#               if any(fn.endswith(ext) for ext in included_extensions)]
-# file_names.sort()
-# # capture frames from the camera
-# #for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-# counter = 0
-# for file_name in file_names:
-
-# capture frames from the camera
-#for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-cam = cv2.VideoCapture(0)
-
 file_name = "cam"
-while(True):
-    ret_val, frame = cam.read()
-    if mirror: frame = cv2.flip(frame, 1) 
+
+average_image = average_image_fast.AverageImage(50)
+
+relevant_path ='/mnt/c/dev/python/images/'
+included_extensions = ['jpg','jpeg', 'bmp', 'png', 'gif']
+file_names = [fn for fn in os.listdir(relevant_path)
+              if any(fn.endswith(ext) for ext in included_extensions)]
+file_names.sort()
+
+
+#for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+
+##### use this section for capture frames from the camera
+# cam = cv2.VideoCapture(0)
+# while(True):
+#     ret_val, frame = cam.read()
+#     if mirror: frame = cv2.flip(frame, 1) 
+##### use this section for getting images from dir
+for file_name in file_names: 
+    full_file_name = relevant_path+file_name
+    print("full_file_name="+full_file_name)
+    frame = cv2.imread(full_file_name) 
 
     if(True) :
         # grab the raw NumPy array representing the image and initialize
         # the timestamp and occupied/unoccupied text
-        #frame = f.array
+
         orig = frame.copy()
         timestamp = datetime.datetime.now()
         text = "Unoccupied"
@@ -72,15 +81,10 @@ while(True):
         frame = imutils.resize(frame, width=500)
         frame_copy = frame.copy()
 
-        if(len(average_files_window)==0) : 
-                average_files_window.append(frame_copy)
-        avearage_past = None
+        if(average_image.get_num_files()==0) : 
+                average_image.add_image(frame_copy)
 
-        for one_past_image in reversed(average_files_window):
-                if avearage_past is None: 
-                        avearage_past = one_past_image
-                else :
-                        avearage_past = cv2.addWeighted(avearage_past,0.9, one_past_image,0.1,0) 
+        avearage_past = average_image.get_average_image()
 
         gray = cv2.cvtColor(frame_copy.copy(), cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21, 21), 0)
@@ -124,27 +128,21 @@ while(True):
         im_v = cv2.hconcat([frame, avearage_past])
         #im_v = cv2.hconcat([gray,avg_gray])
 
-        #all_past = cv2.hconcat(average_files_window)
+        cv2.imshow('image',im_v)
+        cv2.waitKey(100)        
+        cv2.destroyAllWindows()
 
-        ##cv2.imshow('image',im_v)
-        ##cv2.waitKey(100)
-        
-        #cv2.destroyAllWindows()
         status = "0"
-        # if(len(average_files_window)<max_iamge_buffer) : 
-        #         average_files_window.append(frame_copy)
-        #         status = "1"
-        # elif text != "Occupied" and (not_occupied_counter>100 or occupied_counter>100) :
-        #         average_files_window.append(frame_copy)
-        #         if(len(average_files_window)>max_iamge_buffer): del average_files_window[0]
-        #        status = status +"2"
+        
+        
         if True :
-                average_files_window.append(frame_copy)
-                if(len(average_files_window)>max_iamge_buffer): del average_files_window[0]
+                mx_i = (average_image.max_image_buffer)
+                average_image.add_image(frame_copy)
+                if(average_image.get_num_files() > average_image.max_image_buffer): average_image.remove_image()
 
-        if(False): print(text+":working on elemnt "+str(counter)+" status="+status+" avg files="+str( len(average_files_window) ) +
+        if(False): print(text+":working on elemnt "+str(counter)+" status="+status+" avg files="+str( average_image.get_num_files() ) +
                 " not_occupied_counter="+str(not_occupied_counter)+
-                " max_iamge_buffer="+str(max_iamge_buffer))#+" of "+len(file_names.size))
+                " max_image_buffer="+str(average_image.max_image_buffer))#+" of "+len(file_names.size))
         if text != "Occupied" : occupied_counter = 0
         if text == "Occupied" :
                 not_occupied_counter = 0
@@ -153,8 +151,6 @@ while(True):
                 if motionCounter >= conf["min_motion_frames"]:
                         import time
                         consecFrames = 0
-                        #origFileName =  "Detection_" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
-                        #cv2.imwrite('./' + origFileName, orig)
                         #print("Uploaded")
                         #if not kcw.recording:
                         if(False):
@@ -165,48 +161,15 @@ while(True):
                                 kcw.start(p, cv2.VideoWriter_fourcc(*args["codec"]), conf["fps"])
                         motionCounter = 0
                 origFileName =  "Detection_" + time.strftime("%Y%m%d-%H%M%S") +"_"+str(counter)+ ".jpg"
-                cv2.imwrite('/images/' + origFileName, im_v)
-                if(True): print(text+":"+origFileName+":working on elemnt "+str(counter)+" status="+status+" avg files="+str( len(average_files_window) ) +
+                #cv2.imwrite('/images/' + origFileName, im_v)
+                if(True): print(text+":"+origFileName+":working on elemnt "+str(counter)+" status="+status+" avg files="+str( average_image.get_num_files() ) +
                         " not_occupied_counter="+str(not_occupied_counter)+
-                        " max_iamge_buffer="+str(max_iamge_buffer))#+" of "+len(file_names.size))
+                        " max_image_buffer="+str(average_image.max_image_buffer))#+" of "+len(file_names.size))
 
         
         if updateConsecFrames:
                 consecFrames += 1#increment motion counter of frames wihtout motion
 
-        ################kcw.update(frame)
-        ####################if kcw.recording and consecFrames == args["buffer_size"]:
-        if(True):
-                import time
-
-                #Takes a picture of the frame, but at the end of all of the 'commotion'
-                #origFileName =  "Detection_" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
-                #cv2.imwrite('/home/mdm/storage/proc_images/' + origFileName, orig)
-                ################################ not writing becasue we are watching cv2.imwrite('/home/mdm/storage/proc_images/' + file_name, frame)
-                ##################kcw.finish()
-                #Wait 5 seconds to ensure file is written 100%
-                #time.sleep(5)
-
-                
-                #path = "/{base_path}/{p}".format(base_path=conf["dropbox_base_path"], p=p)
-                #dbx.files_upload(open(p, "rb").read(), path)
-
-
-                #Use telegram to send the video to the group chat
-                ###############bot.send_video(chat_id=-MYCHAT, video=open(p, 'rb'))
-
-
-        # check to see if the frames should be displayed to screen
-        
-        #if conf["show_video"]:
-        #        # display the security feed
-        #        cv2.imshow("Security Feed", frame)
-        #        key = cv2.waitKey(1) & 0xFF
- 
-                # # if the `q` key is pressed, break from the lop
-                # if key == ord("q"):
-                #         break
- 
         
         counter = counter + 1    
         # clear the stream in preparation for the next frame
