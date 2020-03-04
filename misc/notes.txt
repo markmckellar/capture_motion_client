@@ -60,9 +60,12 @@ COPY config.json config.json
 ENTRYPOINT ["python","capture_motion.py", "-c", "config.json","-o","./"]
 
 # https://www.raspberrypi.org/forums/viewtopic.php?t=68247
-# if you cant see video in docker :
-sudo modprobe bcm2835-v4l2 
-# /etc/modules-load.d put it here?!?!
+#### if you cant see video in docker :
+```sudo modprobe bcm2835-v4l2 
+# to make it happe nafer very boot add 
+bcm2835-v4l2
+# to this file
+```
 
 
 

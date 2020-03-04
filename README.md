@@ -35,3 +35,10 @@ docker -ps
 # stop the docker
 docker stop cv_docker_captrue_motion
 ```
+
+#### if you cant see video in docker :
+```sudo modprobe bcm2835-v4l2 
+# to make it happe nafer very boot add 
+bcm2835-v4l2
+# to this file
+```
