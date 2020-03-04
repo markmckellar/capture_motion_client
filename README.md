@@ -1,4 +1,4 @@
-# cat_door_client
+# capture motion client
 
 
 
@@ -11,7 +11,7 @@ sudo gpasswd -a $USER docker
 docker run hello-world
 ```
 
-### to straem camera to web
+### to stream camera to web
 ```
 cd stream_to_web
 # build the docker
@@ -23,4 +23,15 @@ docker run -it --rm  -d -p 5000:5000 --device /dev/video0 --name cv_docker_strea
 docker -ps
 # stop the docker
 docker stop cv_docker_stream_vid
+```
+
+### to capture motion
+```
+cd capture_motion
+docker build -t cv_docker_captrue_motion -f cv_docker_captrue_motion  .
+docker run -it -d --rm  -v `pwd`/images:/images --device /dev/video0 --name cv_docker_test cv_docker_captrue_motion
+# list the dockers running
+docker -ps
+# stop the docker
+docker stop cv_docker_captrue_motion
 ```
