@@ -1,2 +1,3 @@
-images/*
-videos/*
+capture/images
+capture/videos
+#*.jpg
