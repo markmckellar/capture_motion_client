@@ -14,12 +14,14 @@ class AverageImage:
         if(self.average_image is None) : 
             self.average_image = image.copy()
         else :
-            add_factor =  1 / self.get_num_files()
+            percent_per_file =  1 / self.get_num_files()
             self.average_image = cv2.addWeighted(
                 self.average_image,
-                add_factor * (self.get_num_files()-1),
+                ####add_factor * (self.get_num_files()-1),
+                (self.max_image_buffer-1)/self.max_image_buffer,
                 image,
-                add_factor,
+                ####add_factor,
+                1/self.max_image_buffer,
                 0) 
 
 
@@ -27,13 +29,15 @@ class AverageImage:
         to_be_removed = self.average_window[0]
         if(self.get_num_files()==0) : 
             self.average_image = None
-        else :
-            add_factor =  1 / self.get_num_files()
+        else :            
+            add_factor =  1 / self.max_image_buffer
+
+            print("remove add_factor="+str(add_factor)+" "+str( self.get_num_files() ))
             self.average_image = cv2.addWeighted(
                 self.average_image,
-                2 * add_factor * (self.get_num_files()-1),
+                2*(1-add_factor),# * ( (self.max_image_buffer-1)/self.max_image_buffer ),
                 to_be_removed,
-                -add_factor * 2,
+                -add_factor,
                 0) 
         del self.average_window[0]
 

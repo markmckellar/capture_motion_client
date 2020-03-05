@@ -14,6 +14,12 @@ class AverageImage:
     def remove_image(self):
         del self.average_window[0]
 
+
+    def gray_and_blur(self,image_to_gray):
+        gray = cv2.cvtColor(image_to_gray, cv2.COLOR_BGR2GRAY)
+        gray_and_blur = cv2.GaussianBlur(gray, (21, 21), 0)
+        return(gray_and_blur)
+
     def get_average_image(self):
         avearage_past = None
 
