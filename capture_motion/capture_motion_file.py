@@ -95,12 +95,14 @@ for file_name in file_names:
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
          
         # loop over the contours
+        contour_list = []
         for c in cnts:
                 # if the contour is too small, ignore it
                 if cv2.contourArea(c) < conf["min_area"]: continue
                 # compute the bounding box for the contour, draw it on the frame, and update the text
                 (x, y, w, h) = cv2.boundingRect(c)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                contour_list.append({"x":x,"y":y,"w":w,"h":h})
                 text = "Occupied"
  
         # draw the text and timestamp on the frame
@@ -146,9 +148,13 @@ for file_name in file_names:
                         motionCounter = 0
                 origFileName =  "Detection_" + time.strftime("%Y%m%d-%H%M%S") +"_"+str(counter)+ ".jpg"
                 #cv2.imwrite('/images/' + origFileName, im_v)
-                if(True): print(text+":"+origFileName+":working on elemnt "+str(counter)+" status="+status+" avg files="+str( average_image.get_num_files() ) +
+                if(True): 
+                        countor_json = ""
+                        if( len(contour_list) > 0) : countor_json = json.dumps(contour_list)
+                        print(text+":"+origFileName+":working on elemnt "+str(counter)+" status="+status+" avg files="+str( average_image.get_num_files() ) +
                         " not_occupied_counter="+str(not_occupied_counter)+
-                        " max_image_buffer="+str(average_image.max_image_buffer))#+" of "+len(file_names.size))
+                        " max_image_buffer="+str(average_image.max_image_buffer)+
+                        ":"+countor_json)#+" of "+len(file_names.size))
 
         
         if updateConsecFrames: consecFrames += 1#increment motion counter of frames wihtout motion
