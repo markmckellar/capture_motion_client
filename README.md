@@ -10,7 +10,13 @@ sudo gpasswd -a $USER docker
 # you may need to reboot or start a new shell for the perms to be set up
 docker run hello-world
 ```
-
+## docker compose
+```
+sudo apt-get install libffi-dev libssl-dev
+sudo apt-get install -y python python-pip
+sudo apt-get remove python-configparser
+sudo pip install docker-compose
+```
 ### to stream camera to web
 ```
 cd stream_to_web
