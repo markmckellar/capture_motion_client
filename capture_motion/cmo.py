@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import argparse
 import warnings
 import datetime
