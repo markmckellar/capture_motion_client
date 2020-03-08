@@ -3,10 +3,10 @@ import cv2
 import numpy as np
 import glob
 import os 
+import sys
+import json
 
-folder = "./images/"
-subfolders = [ f.path for f in os.scandir(folder) if f.is_dir() ]
-subfolders.sort()
+
 
 class MakeVideo :
 
@@ -29,7 +29,25 @@ class MakeVideo :
 
 
 
-# first the dirs
+# get the config file 
+
+if(len(sys.argv)!=2) :
+    print("Invalid arguments : your_config_file.json : the \"output_image_dir\" is the dir which will be processed")
+    print("You gave %i arguments" % (len(sys.argv)))
+    quit()
+config_file = sys.argv[1]
+
+config_json = {}
+with open(config_file, 'r') as f:
+        config_json = json.load(f)   
+
+
+folder = config_json["output_image_dir"]
+print(f"starting processing:folder={folder}")
+
+subfolders = [ f.path for f in os.scandir(folder) if f.is_dir() ]
+subfolders.sort()        
+
 make_video = MakeVideo()
 for image_dir in subfolders: 
     size = None
