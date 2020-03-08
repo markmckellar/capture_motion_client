@@ -7,7 +7,6 @@ import json
 import time
 import cv2
 import os
-import average_image
 
 
 # construct the argument parser and parse the arguments
@@ -38,17 +37,20 @@ class CaptrueMotion :
                 self.conf = json.load(open(self.args["conf"]))
                 self.client = None
 
-                self.avg = None
-                self.consecFrames = 0
-                self.motionCounter = 0
+                self.output_image_dir = self.conf["output_image_dir"]
+                self.last_occupied_frames_past = 0
 
-                self.counter = 0
+                self.avg = None
+                ##########self.motionCounter = 0
+                self.motion_event_number = 0
+
                 self.not_occupied_counter = 0
                 self.occupied_counter = 0
                 self.mirror = False
                 self.file_name = "cam"
+                self.motion_event_dir = None
 
-                self.average_image = average_image.AverageImage(5)
+
 
         def start_grabbing_frames(self) :
                 
@@ -87,93 +89,90 @@ class CaptrueMotion :
         
                 # resize the frame, convert it to grayscale, and blur it
                 frame = image_utils.resize(frame, width=500)
-                frame_copy = frame.copy()
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                gray = cv2.GaussianBlur(gray, (21, 21), 0)
+                # if the average frame is None, initialize it
+                if self.avg is None:
+                        print("[INFO] starting background model...")
+                        self.avg = gray.copy().astype("float")
+                        return
+                # accumulate the weighted average between the current frame and
+                # previous frames, then compute the difference between the current
+                # frame and running average
+                cv2.accumulateWeighted(gray, self.avg, 0.05)
+                frameDelta = cv2.absdiff(gray, cv2.convertScaleAbs(self.avg))
 
-                if(self.average_image.get_num_files()==0) : self.average_image.add_image(frame_copy)
-                average_past = self.average_image.get_average_image()
-
-                # current frame changed to gray and blurred
-                current_gray = self.average_image.gray_and_blur(frame_copy)
-
-                # past frame changed to gray and blurred
-                avg_gray = self.average_image.gray_and_blur(average_past)        
-                self.avg = avg_gray.copy().astype("float")
-
-                cv2.accumulateWeighted(current_gray, self.avg, 0.5)
-                frameDelta = cv2.absdiff(current_gray, cv2.convertScaleAbs(self.avg))
-                #frameDelta = cv2.absdiff(current_gray, cv2.convertScaleAbs(avg_gray))
                 # threshold the delta image, dilate the thresholded image to fill
                 # in holes, then find contours on thresholded image
                 thresh = cv2.threshold(frameDelta, self.conf["delta_thresh"], 255,cv2.THRESH_BINARY)[1]
                 thresh = cv2.dilate(thresh, None, iterations=2)
-                ###import imutils
+
                 cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cnts = cnts[0] if image_utils.is_cv2() else cnts[1]
                 
                 # loop over the contours
                 contour_list = []
+                if(self.conf["show_video"]) : frame_copy = frame.copy()
                 for c in cnts:
                         # if the contour is too small, ignore it
                         if cv2.contourArea(c) < self.conf["min_area"]: continue
                         # compute the bounding box for the contour, draw it on the frame, and update the text
                         (x, y, w, h) = cv2.boundingRect(c)
-                        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                        if(self.conf["show_video"]) :
+                                cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
                         contour_list.append({"x":x,"y":y,"w":w,"h":h})
                         text = "Occupied"
-        
-                # draw the text and timestamp on the frame
-                ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")+":"+self.file_name
-                cv2.putText(frame, "Room Status: {}".format(text), (10, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                cv2.putText(frame, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,0.35, (0, 0, 255), 1)
-                updateConsecFrames = True
+
+
                 
-                # check to see if the room is occupied
-                im_v = cv2.hconcat([frame, average_past])
-                #im_v = cv2.hconcat([gray,avg_gray])
-                if(True):#counter>48 and counter<100):
-                        #cv2.imshow('image',average_past)
-                        cv2.imshow('im_v',im_v)
-                        cv2.waitKey(100)        
-                        cv2.destroyAllWindows()
+                if(self.conf["show_video"]):
+                        # draw the text and timestamp on the frame
+                        ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")+":"+self.file_name
+                        cv2.putText(frame_copy, "Room Status: {}".format(text), (10, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                        cv2.putText(frame_copy, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,0.35, (0, 0, 255), 1)
+                        display_image = cv2.hconcat([frame, frame_copy])
+                        cv2.imshow('display_image',display_image)
+                        cv2.waitKey(5)        
+                        #cv2.destroyAllWindows()
                 status = "0"
                 
-                if True :
-                        self.average_image.add_image(frame_copy)
-                        if(self.average_image.get_num_files() > self.average_image.max_image_buffer) : self.average_image.remove_image()
-                if(False): print(text+":working on elemnt "+str(counter)+" status="+status+" avg files="+str( self.average_image.get_num_files() ) +
-                        " self.not_occupied_counter="+str(self.not_occupied_counter)+
-                        " max_image_buffer="+str(self.average_image.max_image_buffer))#+" of "+len(file_names.size))
+
                 if text != "Occupied" : 
                         self.occupied_counter = 0
                         self.not_occupied_counter += 1
-                if text == "Occupied" :
-                        self.occupied_counter = 0
+                        self.last_occupied_frames_past += 1
+                if text == "Occupied":
+                        if(self.occupied_counter==0) : 
+                                self.motion_event_number += 1
+                                self.motion_event_dir = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_number).rjust(8, '0')
+                                print("self.not_occupied_counter="+str(self.not_occupied_counter)+" "+self.motion_event_dir)
+
+                        self.last_occupied_frames_past = 0
+                        self.not_occupied_counter = 0
                         self.occupied_counter += 1
-                        self.motionCounter += 1
-                        if self.motionCounter >= self.conf["min_motion_frames"]:
-                                self.consecFrames = 0
+                        #self.motionCounter += 1
+                        #if self.motionCounter >= self.conf["min_motion_frames"]:
+                                #self.consecFrames = 0
                                 #print("Uploaded")
                                 #if not kcw.recording:
-                                if(False):
+                                # if(False):
                                         
-                                        timestamp = datetime.datetime.now()
-                                        # .avi for an avi (must have MJPG set in codec in args
-                                        p = "{}/{}.mp4".format(self.args["output"],timestamp.strftime("%Y%m%d-%H%M%S"))
-                                        kcw.start(p, cv2.VideoWriter_fourcc(*self.args["codec"]), self.conf["fps"])
-                                self.motionCounter = 0
-                        origFileName =  "Detection_" + time.strftime("%Y%m%d-%H%M%S") +"_"+str(self.counter)+ ".jpg"
-                        #cv2.imwrite('/images/' + origFileName, im_v)
-                        if(True): 
-                                countor_json = ""
-                                if( len(contour_list) > 0) : countor_json = json.dumps(contour_list)
-                                print(text+":"+origFileName+":working on elemnt "+str(self.counter)+" status="+status+" avg files="+str( self.average_image.get_num_files() ) +
-                                " self.not_occupied_counter="+str(self.not_occupied_counter)+
-                                " max_image_buffer="+str(self.average_image.max_image_buffer)+
-                                ":"+countor_json)#+" of "+len(file_names.size))
+                                #         timestamp = datetime.datetime.now()
+                                #         # .avi for an avi (must have MJPG set in codec in args
+                                #         p = "{}/{}.mp4".format(self.args["output"],timestamp.strftime("%Y%m%d-%H%M%S"))
+                                #         kcw.start(p, cv2.VideoWriter_fourcc(*self.args["codec"]), self.conf["fps"])
+                                #self.motionCounter = 0
+                        if(self.conf["save_motion_files"]):
+                                # output_image_dir
+                                full_output_dir = self.output_image_dir+"/"+self.motion_event_dir
+                                # Create target Directory if don't exist
+                                if not os.path.exists(full_output_dir):os.mkdir(full_output_dir)
+                                output_file_name = str(self.occupied_counter).rjust(5, '0')
+                                cv2.imwrite(full_output_dir+"/" + output_file_name+".jpg", frame)
+                                with open(full_output_dir+"/" + output_file_name+".json", 'w') as outfile:
+                                        json.dump(json.dumps(contour_list), outfile)
 
                 
-                if updateConsecFrames: self.consecFrames += 1#increment motion counter of frames wihtout motion
-                self.counter = self.counter + 1            
 
 #capture_motion = CaptureMotion()
 #capture_motion.start_grabbing_frames()

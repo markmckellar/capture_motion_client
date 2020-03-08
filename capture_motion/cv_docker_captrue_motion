@@ -1,6 +1,10 @@
-FROM mohaseeb/raspberrypi3-python-opencv:3.4.2
+# for pi
+#FROM mohaseeb/raspberrypi3-python-opencv:3.4.2
+#for x86
+FROM yoanlin/opencv-python3
 RUN pip install --no-cache-dir imutils 
-COPY capture_motion.py capture_motion.py
+COPY run_cmo.py run_cmo.py
 COPY config.json config.json
+COPY cmo.py cmo.py
 #CMD ["python", "capture_motion.py"]
-ENTRYPOINT ["python","capture_motion.py", "-c", "config.json","-o","./"]
+ENTRYPOINT ["python","run_cmo.py", "-c", "config.json","-o","./"]

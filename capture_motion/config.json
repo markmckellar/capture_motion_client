@@ -1,14 +1,15 @@
 {
-	"show_video": true,
-	"use_dropbox": true,
-	"dropbox_access_token": "YOUR_DROPBOX_KEY",
-	"dropbox_base_path": "YOUR_DROPBOX_PATH",
-	"min_upload_seconds": 3.0,
-	"min_motion_frames": 8,
-	"camera_warmup_time": 2.5,
+	"show_video": false,
+	"save_motion_files": true,
+	"output_image_dir": "./images",
+	"xxuse_dropbox": true,
+	"xxdropbox_access_token": "YOUR_DROPBOX_KEY",
+	"xxdropbox_base_path": "YOUR_DROPBOX_PATH",
+	"XXmin_upload_seconds": 3.0,
+	"XXmin_motion_frames": 8,
+	"xxcamera_warmup_time": 2.5,
 	"delta_thresh": 5,
-	"resolution": [640, 480],
-	"fps": 16,
-	"min_area": 1000,
-	"xmin_area": 5000
+	"xxresolution": [640, 480],
+	"xxfps": 16,
+	"min_area": 5000
 }
