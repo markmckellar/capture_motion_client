@@ -13,6 +13,12 @@ class MakeVideo :
     def __init__(self):
         self.xxxx = 0
 
+
+    def make_video_from_image_dir_ffmpeg(self,image_folder,video_name,image_ends_with) :
+            command = f"ffmpeg -y -framerate 24 -i {image_folder}/%05d.{image_ends_with} -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" {video_name}.mp4"
+            print("running:{command}")
+            os.system(command)
+
     def make_video_from_image_dir(self,image_folder,video_name,image_ends_with) :
         images = [img for img in os.listdir(image_folder) if img.endswith(image_ends_with)]
         images.sort()
@@ -57,4 +63,6 @@ for image_dir in subfolders:
     movie_file = image_dir+".avi"
     image_ends_with = "jpg"
     print(f"processing:image_dir={image_dir} image_type={image_ends_with} write to={movie_file}")
-    make_video.make_video_from_image_dir(image_dir,movie_file,image_ends_with)
+    #make_video.make_video_from_image_dir(image_dir,movie_file,image_ends_with)
+    make_video.make_video_from_image_dir_ffmpeg(image_dir,image_dir,image_ends_with)
+    
