@@ -7,6 +7,54 @@ import time
 import cv2
 import os
 
+class ImageEvent :
+        def __init__(self,frame,frame_number,is_occupied):
+                self.frame = frame
+                self.frame_number = frame_number
+                self.event_time = datetime.datetime.now()
+                self.is_occupied = is_occupied
+
+class ImageEventHolder :
+        def __init__(self):
+                self.frames = []
+                self.time_last_occupied = None
+                self.time_last_empty = None
+
+        def reset(self) :
+                self.frames = []
+                self.time_last_occupied = None
+                self.time_last_empty = None  
+                
+        def add_occupied_frame(self,frame) :
+                self.frames.append( ImageEvent(frame, len(self.frames),True ) )
+                self.time_last_occupied = datetime.datetime.now()
+
+        def add_empty_frame(self,frame) :
+                self.frames.append( ImageEvent(frame, len(self.frames),False  ))
+                self.time_last_empty = datetime.datetime.now()
+
+        def ms_empty(self) :
+                if(self.time_last_occupied is None) : return(0)
+                if(self.time_last_empty is None) : return(0)
+                diff = self.time_last_empty - self.time_last_occupied
+                return(diff.total_seconds() * 1000)
+
+        def write_frames(sel,output_image_dir,motion_event_dir,occupied_counter) :
+                   # output_image_dir
+                   for frame_event in self.frames :
+                        full_output_dir = self.output_image_dir+"/"+self.motion_event_dir
+                        # Create target Directory if don't exist
+                        if not os.path.exists(full_output_dir):os.mkdir(full_output_dir)
+                        output_file_name = str(frame_event.frame_number).rjust(5, '0')
+                        cv2.imwrite(full_output_dir+"/" + output_file_name+".jpg", frame_event.frame)
+                        with open(full_output_dir+"/" + output_file_name+".json", 'w') as outfile:
+                                json.dump(json.dumps(contour_list), outfile)
+
+
+
+
+
+
 
 # construct the argument parser and parse the arguments
 # export DISPLAY=localhost:0.0
@@ -48,6 +96,7 @@ class CaptrueMotion :
                 self.mirror = False
                 self.file_name = "cam"
                 self.motion_event_dir = None
+                self.image_event_holder = ImageEventHolder()
 
 
 
@@ -140,6 +189,9 @@ class CaptrueMotion :
                         self.occupied_counter = 0
                         self.not_occupied_counter += 1
                         self.last_occupied_frames_past += 1
+                        self.image_event_holder.add_empty_frame(frame)
+                        self.image_event_holder.reset()
+
                 if text == "Occupied":
                         if(self.occupied_counter==0) : 
                                 self.motion_event_number += 1
@@ -149,6 +201,9 @@ class CaptrueMotion :
                         self.last_occupied_frames_past = 0
                         self.not_occupied_counter = 0
                         self.occupied_counter += 1
+
+                        self.image_event_holder.add_occupied_frame(frame)
+
                         #self.motionCounter += 1
                         #if self.motionCounter >= self.conf["min_motion_frames"]:
                                 #self.consecFrames = 0
