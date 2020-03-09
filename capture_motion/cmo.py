@@ -8,47 +8,98 @@ import cv2
 import os
 
 class ImageEvent :
-        def __init__(self,frame,frame_number,is_occupied):
+        def __init__(self,frame,is_occupied,json_data):
                 self.frame = frame
-                self.frame_number = frame_number
                 self.event_time = datetime.datetime.now()
                 self.is_occupied = is_occupied
+                self.json_data = json_data
+        def how_old_in_ms(self) :
+                diff = datetime.datetime.now() - self.event_time
+                return(diff.microseconds/100)
 
 class ImageEventHolder :
-        def __init__(self):
+        def __init__(self,output_image_dir,ms_seconds_overlap,should_frames_be_written):
                 self.frames = []
                 self.time_last_occupied = None
                 self.time_last_empty = None
+                self.ms_seconds_overlap = ms_seconds_overlap
+                self.is_occupied = False
+                self.motion_event_counter = 0
+                self.output_image_dir = output_image_dir
+                self.should_frames_be_written = should_frames_be_written
+                self.start_time = datetime.datetime.now()
 
         def reset(self) :
+                if(self.should_frames_be_written and self.time_last_occupied is not None) : self.write_frames()
                 self.frames = []
                 self.time_last_occupied = None
                 self.time_last_empty = None  
-                
-        def add_occupied_frame(self,frame) :
-                self.frames.append( ImageEvent(frame, len(self.frames),True ) )
-                self.time_last_occupied = datetime.datetime.now()
+                self.motion_event_counter += 1
+                self.start_time = datetime.datetime.now()
 
-        def add_empty_frame(self,frame) :
-                self.frames.append( ImageEvent(frame, len(self.frames),False  ))
-                self.time_last_empty = datetime.datetime.now()
 
-        def ms_empty(self) :
-                if(self.time_last_occupied is None) : return(0)
-                if(self.time_last_empty is None) : return(0)
-                diff = self.time_last_empty - self.time_last_occupied
-                return(diff.total_seconds() * 1000)
-
-        def write_frames(sel,output_image_dir,motion_event_dir,occupied_counter) :
+        def write_frames(self) :
                    # output_image_dir
+                   frame_counter = 0
+                   motion_event_dir = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_counter).rjust(4, '0')
+                   print(f"WRITING FRAMES motion_event_dir={motion_event_dir}")
+
                    for frame_event in self.frames :
-                        full_output_dir = self.output_image_dir+"/"+self.motion_event_dir
+
+                        full_output_dir = self.output_image_dir+"/"+motion_event_dir
                         # Create target Directory if don't exist
                         if not os.path.exists(full_output_dir):os.mkdir(full_output_dir)
-                        output_file_name = str(frame_event.frame_number).rjust(5, '0')
+                        output_file_name = str(frame_counter).rjust(5, '0')
+                        ###########print(f"     WRITING FRAMES full_output_dir={full_output_dir} output_file_name={output_file_name}")
                         cv2.imwrite(full_output_dir+"/" + output_file_name+".jpg", frame_event.frame)
                         with open(full_output_dir+"/" + output_file_name+".json", 'w') as outfile:
-                                json.dump(json.dumps(contour_list), outfile)
+                                outfile.write( json.dumps(frame_event.json_data) )
+
+                        frame_counter += 1
+                
+        def add_occupied_frame(self,frame,json_data) :
+                self.frames.append( ImageEvent(frame,True,json_data) )
+                self.time_last_occupied = datetime.datetime.now()
+                self.is_occupied = True
+
+        def add_empty_frame(self,frame,json_data) :
+                self.frames.append( ImageEvent(frame,False,json_data))
+                self.time_last_empty = datetime.datetime.now()
+                self.is_occupied = False
+
+                del_counter = 0
+                ms_last_occupied = 0
+                if(self.time_last_occupied is None) :
+                        while( self.number_of_frames()>0  and self.frames[0].how_old_in_ms()>self.ms_seconds_overlap) :
+                                #print(f"          ************* self.frames[0].how_old_in_ms()={self.frames[0].how_old_in_ms()}")                                
+                                del self.frames[0]
+                                del_counter += 1
+                else : 
+                        ms_last_occupied = self.ms_occupied()
+                        if(ms_last_occupied>self.ms_seconds_overlap) : 
+                                print(f"calling reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
+                                self.reset()
+
+                frame_zero_age = -99999999999
+                if( len(self.frames)>0  ) :
+                        frame_zero_age = self.frames[0].how_old_in_ms()
+                #print(f"     frames={len(self.frames)} del_counter={del_counter} frame_zero_age={frame_zero_age} ms_seconds_overlap={self.ms_seconds_overlap} ms_last_occupied={ms_last_occupied}")
+                
+        def ms_occupied(self) :
+                use_date = self.time_last_occupied
+                if(use_date is None) : use_date = self.start_time                        
+                diff = datetime.datetime.now() - use_date
+                return(diff.microseconds/100)
+
+        def ms_empty(self) :
+                use_date = self.time_last_empty
+                if(use_date is None) : use_date = self.start_time                        
+                diff = datetime.datetime.now() - use_date
+                return(diff.microseconds/100)
+        
+        def number_of_frames(self) :
+                return( len(self.frames) )
+        
 
 
 
@@ -76,28 +127,19 @@ class CaptrueMotion :
                         help="buffer size of video clip writer")
                 self.args = vars(self.arg_parser.parse_args())
 
-                #####kcw = KeyClipWriter(bufSize=args["buffer_size"])
-
                 # filter warnings, load the configuration and initialize the Dropbox
                 # client
                 warnings.filterwarnings("ignore")
                 self.conf = json.load(open(self.args["conf"]))
                 self.client = None
-
-                self.output_image_dir = self.conf["output_image_dir"]
-                self.last_occupied_frames_past = 0
-
-                self.avg = None
-                ##########self.motionCounter = 0
-                self.motion_event_number = 0
-
-                self.not_occupied_counter = 0
-                self.occupied_counter = 0
+                self.avg = None                
                 self.mirror = False
                 self.file_name = "cam"
                 self.motion_event_dir = None
-                self.image_event_holder = ImageEventHolder()
-
+                self.image_event_holder = ImageEventHolder(
+                        self.conf["output_image_dir"],
+                        self.conf["motion_event_overlap"],
+                        self.conf["save_motion_files"])
 
 
         def start_grabbing_frames(self) :
@@ -105,7 +147,6 @@ class CaptrueMotion :
                 #grab_frames_from_files('/mnt/c/dev/python/images/')
                 #self.grab_frames_from_files('/home/mdm/storage/proc_images/')
                 self.grab_frames_from_camera()
-
 
         def grab_frames_from_files(self,relevant_path) :
                 included_extensions = ['jpg','jpeg', 'bmp', 'png', 'gif']
@@ -116,8 +157,9 @@ class CaptrueMotion :
                         self.file_name = file_name
                         full_file_name = relevant_path+file_name
                         frame = cv2.imread(full_file_name) 
-                        print("yep!:"+full_file_name)
                         self.do_a_frame(frame)
+                self.image_event_holder.reset()
+
 
 
         #### use this section for capture frames from the camera
@@ -129,6 +171,7 @@ class CaptrueMotion :
                         if self.mirror: frame = cv2.flip(frame, 1) 
                         self.file_name = "image_from_cam"
                         self.do_a_frame(frame)
+                self.reset()
 
         def do_a_frame(self,frame) :   
                 full_file_name = "this is full_file_name read in, but its from a camera"
@@ -136,7 +179,8 @@ class CaptrueMotion :
                 text = "Unoccupied"
         
                 # resize the frame, convert it to grayscale, and blur it
-                frame = image_utils.resize(frame, width=500)
+                #frame = image_utils.resize(frame, width=500)
+                frame = self.resize(frame, width=500)
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 gray = cv2.GaussianBlur(gray, (21, 21), 0)
                 # if the average frame is None, initialize it
@@ -185,48 +229,41 @@ class CaptrueMotion :
                 status = "0"
                 
 
-                if text != "Occupied" : 
-                        self.occupied_counter = 0
-                        self.not_occupied_counter += 1
-                        self.last_occupied_frames_past += 1
-                        self.image_event_holder.add_empty_frame(frame)
-                        self.image_event_holder.reset()
+                if text != "Occupied" :        
+                        self.image_event_holder.add_empty_frame(frame,contour_list)
 
                 if text == "Occupied":
-                        if(self.occupied_counter==0) : 
-                                self.motion_event_number += 1
-                                self.motion_event_dir = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_number).rjust(8, '0')
-                                print("self.not_occupied_counter="+str(self.not_occupied_counter)+" "+self.motion_event_dir)
+                        self.image_event_holder.add_occupied_frame(frame,contour_list)
 
-                        self.last_occupied_frames_past = 0
-                        self.not_occupied_counter = 0
-                        self.occupied_counter += 1
+                print(f"number_of_frames={self.image_event_holder.number_of_frames()} ms_occupied={self.image_event_holder.ms_occupied()} ms_empty={self.image_event_holder.ms_empty()} is_occupied={self.image_event_holder.is_occupied}")
 
-                        self.image_event_holder.add_occupied_frame(frame)
+        def resize(self,image, width=None, height=None, inter=cv2.INTER_AREA):
+                # initialize the dimensions of the image to be resized and
+                # grab the image size
+                dim = None
+                (h, w) = image.shape[:2]
 
-                        #self.motionCounter += 1
-                        #if self.motionCounter >= self.conf["min_motion_frames"]:
-                                #self.consecFrames = 0
-                                #print("Uploaded")
-                                #if not kcw.recording:
-                                # if(False):
-                                        
-                                #         timestamp = datetime.datetime.now()
-                                #         # .avi for an avi (must have MJPG set in codec in args
-                                #         p = "{}/{}.mp4".format(self.args["output"],timestamp.strftime("%Y%m%d-%H%M%S"))
-                                #         kcw.start(p, cv2.VideoWriter_fourcc(*self.args["codec"]), self.conf["fps"])
-                                #self.motionCounter = 0
-                        if(self.conf["save_motion_files"]):
-                                # output_image_dir
-                                full_output_dir = self.output_image_dir+"/"+self.motion_event_dir
-                                # Create target Directory if don't exist
-                                if not os.path.exists(full_output_dir):os.mkdir(full_output_dir)
-                                output_file_name = str(self.occupied_counter).rjust(5, '0')
-                                cv2.imwrite(full_output_dir+"/" + output_file_name+".jpg", frame)
-                                with open(full_output_dir+"/" + output_file_name+".json", 'w') as outfile:
-                                        json.dump(json.dumps(contour_list), outfile)
+                # if both the width and height are None, then return the
+                # original image
+                if width is None and height is None:
+                        return image
 
-                
+                # check to see if the width is None
+                if width is None:
+                        # calculate the ratio of the height and construct the
+                        # dimensions
+                        r = height / float(h)
+                        dim = (int(w * r), height)
 
-#capture_motion = CaptureMotion()
-#capture_motion.start_grabbing_frames()
+                # otherwise, the height is None
+                else:
+                        # calculate the ratio of the width and construct the
+                        # dimensions
+                        r = width / float(w)
+                        dim = (width, int(h * r))
+
+                # resize the image
+                resized = cv2.resize(image, dim, interpolation=inter)
+
+                # return the resized image
+                return resized     
