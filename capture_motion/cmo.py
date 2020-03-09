@@ -75,7 +75,7 @@ class ImageEventHolder :
                                 del self.frames[0]
                                 del_counter += 1
                 else : 
-                        ms_last_occupied = self.ms_occupied()
+                        ms_last_occupied = self.get_ms_since_last_occupied()
                         if(ms_last_occupied>self.ms_seconds_overlap) : 
                                 print(f"calling reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
                                 self.reset()
@@ -85,13 +85,13 @@ class ImageEventHolder :
                         frame_zero_age = self.frames[0].how_old_in_ms()
                 #print(f"     frames={len(self.frames)} del_counter={del_counter} frame_zero_age={frame_zero_age} ms_seconds_overlap={self.ms_seconds_overlap} ms_last_occupied={ms_last_occupied}")
                 
-        def ms_occupied(self) :
+        def get_ms_since_last_occupied(self) :
                 use_date = self.time_last_occupied
                 if(use_date is None) : use_date = self.start_time                        
                 diff = datetime.datetime.now() - use_date
                 return(diff.microseconds/100)
 
-        def ms_empty(self) :
+        def get_ms_since_last_not_occupied(self) :
                 use_date = self.time_last_empty
                 if(use_date is None) : use_date = self.start_time                        
                 diff = datetime.datetime.now() - use_date
@@ -235,7 +235,7 @@ class CaptrueMotion :
                 if text == "Occupied":
                         self.image_event_holder.add_occupied_frame(frame,contour_list)
 
-                print(f"number_of_frames={self.image_event_holder.number_of_frames()} ms_occupied={self.image_event_holder.ms_occupied()} ms_empty={self.image_event_holder.ms_empty()} is_occupied={self.image_event_holder.is_occupied}")
+                print(f"number_of_frames={self.image_event_holder.number_of_frames()} ms_since_last_occupied={self.image_event_holder.get_ms_since_last_occupied()} ms_since_last_not_occupied={self.image_event_holder.get_ms_since_last_not_occupied()} is_occupied={self.image_event_holder.is_occupied}")
 
         def resize(self,image, width=None, height=None, inter=cv2.INTER_AREA):
                 # initialize the dimensions of the image to be resized and
