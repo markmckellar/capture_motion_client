@@ -30,6 +30,7 @@ class ImageEventHolder :
                 self.start_time = datetime.datetime.now()
 
         def reset(self) :
+                print("reset called")
                 if(self.should_frames_be_written and self.time_last_occupied is not None) : self.write_frames()
                 self.frames = []
                 self.time_last_occupied = None
@@ -56,6 +57,8 @@ class ImageEventHolder :
                                 outfile.write( json.dumps(frame_event.json_data) )
 
                         frame_counter += 1
+        def write_frame(self) :
+
                 
         def add_occupied_frame(self,frame,json_data) :
                 self.frames.append( ImageEvent(frame,True,json_data) )
@@ -71,7 +74,7 @@ class ImageEventHolder :
                 ms_last_occupied = 0
                 if(self.time_last_occupied is None) :
                         while( self.number_of_frames()>0  and self.frames[0].how_old_in_ms()>self.ms_seconds_overlap) :
-                                #print(f"          ************* self.frames[0].how_old_in_ms()={self.frames[0].how_old_in_ms()}")                                
+                                print(f"     deleting first frame  ************* self.frames[0].how_old_in_ms()={self.frames[0].how_old_in_ms()}")                                
                                 del self.frames[0]
                                 del_counter += 1
                 else : 
@@ -79,6 +82,8 @@ class ImageEventHolder :
                         if(ms_last_occupied>self.ms_seconds_overlap) : 
                                 print(f"calling reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
                                 self.reset()
+                        else :
+                                print(f"skipping rest reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
 
                 frame_zero_age = -99999999999
                 if( len(self.frames)>0  ) :
