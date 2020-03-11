@@ -36,6 +36,16 @@ class MakeVideo :
 
 
 # get the config file 
+	# "motion_event_processor":{
+	# 	"active":true,
+	# 	"watch_dir":"./images",
+	# 	"output_dir":"./uploads",
+	# 	"movie_type":"mp4",
+	# 	"make_combined_move":true,
+	# 	"make_event_movies":true,
+	# 	"out_images":true,
+	# 	"delete_when_done":true
+	# },
 
 if(len(sys.argv)!=2) :
     print("Invalid arguments : your_config_file.json : the \"output_image_dir\" is the dir which will be processed")

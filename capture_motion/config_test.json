@@ -1,13 +1,18 @@
 {
-	"show_video": true,
-	"save_motion_files": true,
-	"output_image_dir": "./images",
-	"motion_event_overlap": 3000,
+
+	"motion_event_generator":{
+		"show_video": true,
+		"save_motion_files": true,
+		"output_image_dir": "./images",
+		"motion_event_overlap": 3000
+	},
 	"motion_event_processor":{
 		"active":true,
 		"watch_dir":"./images",
 		"output_dir":"./uploads",
 		"movie_type":"mp4",
+		"make_combined_move":true,
+		"make_event_movies":true,
 		"out_images":true,
 		"delete_when_done":true
 	},

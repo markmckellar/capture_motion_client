@@ -59,7 +59,7 @@ class ImageEventHolder :
                         frame_counter += 1
         def check_for_max(self) :
                 if(self.number_of_frames()>2000): self.reset()
-                        
+
         def add_occupied_frame(self,frame,json_data) :
                 self.frames.append( ImageEvent(frame,True,json_data) )
                 self.time_last_occupied = datetime.datetime.now()
@@ -115,6 +115,12 @@ class ImageEventHolder :
 # construct the argument parser and parse the arguments
 # export DISPLAY=localhost:0.0
 # ./capture_motion_file.py -c config.json -o ./
+	# "motion_event_generator":{
+	# 	"show_video": true,
+	# 	"save_motion_files": true,
+	# 	"output_image_dir": "./images",
+	# 	"motion_event_overlap": 3000
+	# },
 class CaptrueMotion :
 
         def __init__(self):
