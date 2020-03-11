@@ -6,7 +6,7 @@
 	"motion_event_processor":{
 		"active":true,
 		"watch_dir":"./images",
-		"output_dir":"./movies",
+		"output_dir":"./uploads",
 		"movie_type":"mp4",
 		"out_images":true,
 		"delete_when_done":true

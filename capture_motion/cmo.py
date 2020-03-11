@@ -57,9 +57,9 @@ class ImageEventHolder :
                                 outfile.write( json.dumps(frame_event.json_data) )
 
                         frame_counter += 1
-        def write_frame(self) :
-
-                
+        def check_for_max(self) :
+                if(self.number_of_frames()>2000): self.reset()
+                        
         def add_occupied_frame(self,frame,json_data) :
                 self.frames.append( ImageEvent(frame,True,json_data) )
                 self.time_last_occupied = datetime.datetime.now()
