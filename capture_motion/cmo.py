@@ -6,32 +6,49 @@ import json
 import time
 import cv2
 import os
+import sys
 
 class ImageEvent :
-        def __init__(self,frame,is_occupied,json_data):
+        def __init__(self,frame,is_occupied,json_data,image_event_holder):
                 self.frame = frame
                 self.event_time = datetime.datetime.now()
                 self.is_occupied = is_occupied
-                self.json_data = json_data
+                self.json_data = {
+                        "contours":json_data,
+                        "occupied":is_occupied,
+                        "event_time":self.event_time.microsecond/100,
+                        "last_occupied_ago_in_ms":image_event_holder.get_ms_since_last_occupied(),
+                        "ms_since_last_occupied":image_event_holder.get_ms_since_last_occupied(),
+                        "event_start_time":image_event_holder.start_time.microsecond/100,
+                        #"time_last_occupied":image_event_holder.time_last_occupied.microsecond/100,
+                        #"time_last_occupied":image_event_holder.time_last_empty.microsecond/100,
+                        "number_of_frames":image_event_holder.number_of_frames()
+                        }
+                image_event_holder.start_time
+                image_event_holder.time_last_occupied
+                image_event_holder.number_of_frames()
         def how_old_in_ms(self) :
                 diff = datetime.datetime.now() - self.event_time
                 return(diff.microseconds/100)
 
 class ImageEventHolder :
-        def __init__(self,output_image_dir,ms_seconds_overlap,should_frames_be_written):
+        def __init__(self,conf):
+                self.conf = conf
+                self.output_image_dir = self.conf["output_image_dir"]
+                self.ms_seconds_overlap = self.conf["ms_seconds_overlap"]
+                self.save_motion_files = self.conf["save_motion_files"]
+
+
                 self.frames = []
                 self.time_last_occupied = None
                 self.time_last_empty = None
-                self.ms_seconds_overlap = ms_seconds_overlap
                 self.is_occupied = False
                 self.motion_event_counter = 0
-                self.output_image_dir = output_image_dir
-                self.should_frames_be_written = should_frames_be_written
                 self.start_time = datetime.datetime.now()
 
         def reset(self) :
                 print("reset called")
-                if(self.should_frames_be_written and self.time_last_occupied is not None) : self.write_frames()
+                if(self.save_motion_files and self.time_last_occupied is not None) : self.write_frames()
                 self.frames = []
                 self.time_last_occupied = None
                 self.time_last_empty = None  
@@ -40,33 +57,37 @@ class ImageEventHolder :
 
 
         def write_frames(self) :
-                   # output_image_dir
-                   frame_counter = 0
-                   motion_event_dir = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_counter).rjust(4, '0')
-                   print(f"WRITING FRAMES motion_event_dir={motion_event_dir}")
+                # output_image_dir
+                frame_counter = 0
+                motion_event_dir_final = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_counter).rjust(4, '0')
+                motion_event_dir = "not_ready_"+motion_event_dir_final
+                print(f"WRITING FRAMES motion_event_dir={motion_event_dir}")
 
-                   for frame_event in self.frames :
+                for frame_event in self.frames :
 
                         full_output_dir = self.output_image_dir+"/"+motion_event_dir
                         # Create target Directory if don't exist
                         if not os.path.exists(full_output_dir):os.mkdir(full_output_dir)
                         output_file_name = str(frame_counter).rjust(5, '0')
                         ###########print(f"     WRITING FRAMES full_output_dir={full_output_dir} output_file_name={output_file_name}")
+                        print("XXXXXXXXXXXXXXXXXXXXXXXXX : "+ str(frame_event.json_data) )
                         cv2.imwrite(full_output_dir+"/" + output_file_name+".jpg", frame_event.frame)
                         with open(full_output_dir+"/" + output_file_name+".json", 'w') as outfile:
-                                outfile.write( json.dumps(frame_event.json_data) )
+                                outfile.write( json.dumps(frame_event.json_data,indent=4) )
 
                         frame_counter += 1
+                
+                os.rename(self.output_image_dir+"/"+motion_event_dir,self.output_image_dir+"/"+motion_event_dir_final)
         def check_for_max(self) :
                 if(self.number_of_frames()>2000): self.reset()
 
         def add_occupied_frame(self,frame,json_data) :
-                self.frames.append( ImageEvent(frame,True,json_data) )
+                self.frames.append( ImageEvent(frame,True,json_data,self) )
                 self.time_last_occupied = datetime.datetime.now()
                 self.is_occupied = True
 
         def add_empty_frame(self,frame,json_data) :
-                self.frames.append( ImageEvent(frame,False,json_data))
+                self.frames.append( ImageEvent(frame,False,json_data,self))
                 self.time_last_empty = datetime.datetime.now()
                 self.is_occupied = False
 
@@ -105,59 +126,29 @@ class ImageEventHolder :
         def number_of_frames(self) :
                 return( len(self.frames) )
         
-
-
-
-
-
-
-
-# construct the argument parser and parse the arguments
-# export DISPLAY=localhost:0.0
-# ./capture_motion_file.py -c config.json -o ./
-	# "motion_event_generator":{
-	# 	"show_video": true,
-	# 	"save_motion_files": true,
-	# 	"output_image_dir": "./images",
-	# 	"motion_event_overlap": 3000
-	# },
 class CaptrueMotion :
 
         def __init__(self):
 
-                self.arg_parser = argparse.ArgumentParser()
-                self.arg_parser.add_argument("-c", "--conf", required=True,
-                        help="path to the JSON configuration file")
-                self.arg_parser.add_argument("-o", "--output", required=True,
-                        help="path to output directory")
-                #self.arg_parser.add_argument("-f", "--fps", type=int, default=10,
-                #	help="FPS of output video")
-                self.arg_parser.add_argument("-d", "--codec", type=str, default="mp4v",
-                        help="codec of output video") #MJPG for an .avi, mp4v for an mp4
-                self.arg_parser.add_argument("-b", "--buffer-size", type=int, default=32,
-                        help="buffer size of video clip writer")
-                self.args = vars(self.arg_parser.parse_args())
 
-                # filter warnings, load the configuration and initialize the Dropbox
-                # client
-                warnings.filterwarnings("ignore")
-                self.conf = json.load(open(self.args["conf"]))
-                self.client = None
+                if(len(sys.argv)!=2) :
+                        print("Invalid arguments : your_config_file.json : the \"output_image_dir\" is the dir which will be processed")
+                        print("You gave %i arguments" % (len(sys.argv)))
+                        quit()
+                config_file = sys.argv[1]
+
+                config_json = {}
+                with open(config_file, 'r') as f:
+                        config_json = json.load(f)  
+
+                self.conf = config_json["motion_event_generator"]
+
                 self.avg = None                
                 self.mirror = False
                 self.file_name = "cam"
                 self.motion_event_dir = None
-                self.image_event_holder = ImageEventHolder(
-                        self.conf["output_image_dir"],
-                        self.conf["motion_event_overlap"],
-                        self.conf["save_motion_files"])
+                self.image_event_holder = ImageEventHolder(self.conf)
 
-
-        def start_grabbing_frames(self) :
-                
-                #grab_frames_from_files('/mnt/c/dev/python/images/')
-                #self.grab_frames_from_files('/home/mdm/storage/proc_images/')
-                self.grab_frames_from_camera()
 
         def grab_frames_from_files(self,relevant_path) :
                 included_extensions = ['jpg','jpeg', 'bmp', 'png', 'gif']

@@ -5,8 +5,8 @@ import glob
 import os 
 import sys
 import json
-
-
+import time
+import shutil
 
 class MakeVideo :
 
@@ -14,8 +14,8 @@ class MakeVideo :
         self.xxxx = 0
 
 
-    def make_video_from_image_dir_ffmpeg(self,image_folder,video_name,image_ends_with) :
-            command = f"ffmpeg -y -framerate 24 -i {image_folder}/%05d.{image_ends_with} -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" {video_name}.mp4"
+    def make_video_from_image_dir_ffmpeg(self,image_folder,image_input_pattern,video_name) :
+            command = f"ffmpeg -y -framerate 24 -i {image_folder}/{image_input_pattern} -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" {video_name}.mp4"
             print("running:{command}")
             os.system(command)
 
@@ -53,26 +53,41 @@ if(len(sys.argv)!=2) :
     quit()
 config_file = sys.argv[1]
 
-config_json = {}
-with open(config_file, 'r') as f:
-        config_json = json.load(f)   
+      
+while(True) :
 
+    config_json = {}
+    with open(config_file, 'r') as f:
+            config_json = json.load(f)   
+    config = config_json["motion_event_processor"]
+    if(config["active"])  :
 
-folder = config_json["output_image_dir"]
-print(f"starting processing:folder={folder}")
+        folder = config["watch_dir"]
+        print(f"starting processing:folder={folder}")
 
-subfolders = [ f.path for f in os.scandir(folder) if f.is_dir() ]
-subfolders.sort()        
+        subfolders = [ f.path for f in os.scandir(folder) if f.is_dir() ]
+        subfolders.sort()  
 
-make_video = MakeVideo()
-for image_dir in subfolders: 
-    size = None
-    img_array_for_a_dir = []
+        make_video = MakeVideo()
+        for image_dir in subfolders: 
+            size = None
+            img_array_for_a_dir = []
 
-    # then the files...
-    movie_file = image_dir+".avi"
-    image_ends_with = "jpg"
-    print(f"processing:image_dir={image_dir} image_type={image_ends_with} write to={movie_file}")
-    #make_video.make_video_from_image_dir(image_dir,movie_file,image_ends_with)
-    make_video.make_video_from_image_dir_ffmpeg(image_dir,image_dir,image_ends_with)
-    
+            # then the files...
+            image_dir_base = os.path.basename(image_dir)
+
+            if "not_ready" not in image_dir_base :
+                video_name = config["output_dir"]+"/"+image_dir_base+".mp4"
+                image_input_pattern = config["image_input_pattern"]
+                print(f"processing:image_dir={image_dir} image_input_pattern={image_input_pattern} write to={video_name} image_dir_base={image_dir_base}")
+                make_video.make_video_from_image_dir_ffmpeg(image_dir,
+                    image_input_pattern,
+                    video_name)
+            
+            if(config["delete_when_done"]) : shutil.rmtree(image_dir)
+                
+
+        sleep_time = config["sleep_time"]
+        print(f"sleeping for {sleep_time}...")
+        time.sleep(sleep_time)
+        
