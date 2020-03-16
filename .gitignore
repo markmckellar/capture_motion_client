@@ -1,4 +1,6 @@
 capture_motion/images
 capture_motion/videos
+capture_motion/uploads
 *.jpg
+*.mp4
 **/__pycache__/

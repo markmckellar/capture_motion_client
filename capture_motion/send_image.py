@@ -37,7 +37,7 @@ while(True) :
 	
 	if(config["active"])  :
 		watch_dir = config["watch_dir"] 
-		included_extensions = ['jpg','jpeg', 'bmp', 'png', 'gif',"mp4"]
+		included_extensions = ['jpg','jpeg', 'bmp', 'png', 'gif',"mp4","json"]
 		file_names = [fn for fn in os.listdir(watch_dir)
 					if any(fn.endswith(ext) for ext in included_extensions)]
 

@@ -2,7 +2,7 @@
 
 	"motion_event_generator":{
 		"active":true,
-		"show_video": true,
+		"show_video": false,
 		"save_motion_files": true,
 		"output_image_dir": "./images",
 		"ms_seconds_overlap": 3000,
@@ -26,7 +26,8 @@
 		"sleep_time":60,
 		"watch_dir":"./uploads",
 		"server_type":"open",
-		"server":"http://127.0.0.1:8080",
+		"xserver":"http://127.0.0.1:8080",
+		"server":"192.168.1.177:9090",
 		"xserver":"http://exp.blackdoge.com:8080",
 		"endpoint":"/uploadfile",
 		"delete_when_done":true
