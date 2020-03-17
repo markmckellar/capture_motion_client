@@ -16,7 +16,7 @@ class MakeVideo :
         self.xxxx = 0
 
 
-    def make_video_from_image_dir_ffmpeg(self,image_folder,image_input_pattern,video_name,video_json) :
+    def make_video_from_image_dir_ffmpeg(self,image_folder,image_input_pattern,json_name,video_name,video_json) :
             command = f"ffmpeg -y -framerate 24 -i {image_folder}/{image_input_pattern} -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" {video_name}"
             print(f"running:{command}")
             os.system(command)
@@ -42,37 +42,11 @@ class MakeVideo :
                         motion_event_json = json.load(f)   
                         video_json["me_array"].append(motion_event_json)
 
-            with open(config["output_dir"]+"/" + video_json["me_tag"]+".json", 'w') as outfile:
+            with open(json_name, 'w') as outfile:
                                 outfile.write( json.dumps(video_json,indent=4) )
 
 
-    def make_video_from_image_dir(self,image_folder,video_name,image_ends_with) :
-        images = [img for img in os.listdir(image_folder) if img.endswith(image_ends_with)]
-        images.sort()
-        frame = cv2.imread(os.path.join(image_folder, images[0]))
-        height, width, layers = frame.shape
-
-        video = cv2.VideoWriter(video_name, 0, 1, (width,height))
-
-        for image in images:
-            video.write(cv2.imread(os.path.join(image_folder, image)))
-
-        cv2.destroyAllWindows()
-        video.release()
-
-
-
-# get the config file 
-	# "motion_event_processor":{
-	# 	"active":true,
-	# 	"watch_dir":"./images",
-	# 	"output_dir":"./uploads",
-	# 	"movie_type":"mp4",
-	# 	"make_combined_move":true,
-	# 	"make_event_movies":true,
-	# 	"out_images":true,
-	# 	"delete_when_done":true
-	# },
+ 
 
 if(len(sys.argv)!=2) :
     print("Invalid arguments : your_config_file.json : the \"output_image_dir\" is the dir which will be processed")
@@ -105,15 +79,21 @@ while(True) :
 
             if "not_ready" not in image_dir_base :
                 video_name = config["output_dir"]+"/"+image_dir_base+".mp4"
+                json_name = config["output_dir"]+"/"+image_dir_base+".json"
+
                 image_input_pattern = config["image_input_pattern"]
                 print(f"processing:image_dir={image_dir} image_input_pattern={image_input_pattern} write to={video_name} image_dir_base={image_dir_base}")
-                make_video.make_video_from_image_dir_ffmpeg(image_dir,
+                make_video.make_video_from_image_dir_ffmpeg(
+                    image_dir,
                     image_input_pattern,
+                    json_name,
                     video_name,
                     {
                         "me_tag":image_dir_base,
                         "me_array":[],
                         "me_time":-1,
+                        "me_video_name":image_dir_base+".mp4",
+                        "me_json_name":image_dir_base+".json"
                     })
             
 
@@ -126,3 +106,40 @@ while(True) :
         print(f"sleeping for {sleep_time}...")
         time.sleep(sleep_time)
         
+
+
+
+
+
+
+
+
+
+
+   # def make_video_from_image_dir(self,image_folder,video_name,image_ends_with) :
+    #     images = [img for img in os.listdir(image_folder) if img.endswith(image_ends_with)]
+    #     images.sort()
+    #     frame = cv2.imread(os.path.join(image_folder, images[0]))
+    #     height, width, layers = frame.shape
+
+    #     video = cv2.VideoWriter(video_name, 0, 1, (width,height))
+
+    #     for image in images:
+    #         video.write(cv2.imread(os.path.join(image_folder, image)))
+
+    #     cv2.destroyAllWindows()
+    #     video.release()
+
+
+
+# get the config file 
+	# "motion_event_processor":{
+	# 	"active":true,
+	# 	"watch_dir":"./images",
+	# 	"output_dir":"./uploads",
+	# 	"movie_type":"mp4",
+	# 	"make_combined_move":true,
+	# 	"make_event_movies":true,
+	# 	"out_images":true,
+	# 	"delete_when_done":true
+	# },
