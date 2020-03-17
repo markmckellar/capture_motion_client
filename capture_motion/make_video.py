@@ -25,8 +25,11 @@ class MakeVideo :
             print(f"running:{command}")
             #video_json["me_time"] = os.system(command)
             run_time =  subprocess.check_output(command, shell=True)
-            video_json["me_time"] = float(run_time.strip().decode())
-
+            print(f"got run_time of {run_time}")
+            try :
+            	video_json["me_time"] = float(run_time.strip().decode())
+            except :
+            	print(f"got error converting run_time of {run_time}")
             #video_json["me_time"] = os.popen(command).read()
             #tiiiiiiiiiiime = os.popen(command).read()
 
@@ -114,8 +117,10 @@ while(True) :
                     })
             
 
-            if(config["delete_when_done"]) : shutil.rmtree(image_dir)
-                
+            try :
+            	if(config["delete_when_done"]) : shutil.rmtree(image_dir)
+            except :
+            	print(f"had an error removing {image_dir}")
 
         sleep_time = config["sleep_time"]
         print(f"sleeping for {sleep_time}...")

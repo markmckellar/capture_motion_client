@@ -70,7 +70,7 @@ class ImageEventHolder :
                         if not os.path.exists(full_output_dir):os.mkdir(full_output_dir)
                         output_file_name = str(frame_counter).rjust(5, '0')
                         ###########print(f"     WRITING FRAMES full_output_dir={full_output_dir} output_file_name={output_file_name}")
-                        print("XXXXXXXXXXXXXXXXXXXXXXXXX : "+ str(frame_event.json_data) )
+                        #print("XXXXXXXXXXXXXXXXXXXXXXXXX : "+ str(frame_event.json_data) )
                         cv2.imwrite(full_output_dir+"/" + output_file_name+".jpg", frame_event.frame)
                         with open(full_output_dir+"/" + output_file_name+".json", 'w') as outfile:
                                 outfile.write( json.dumps(frame_event.json_data,indent=4) )
@@ -95,7 +95,7 @@ class ImageEventHolder :
                 ms_last_occupied = 0
                 if(self.time_last_occupied is None) :
                         while( self.number_of_frames()>0  and self.frames[0].how_old_in_ms()>self.ms_seconds_overlap) :
-                                print(f"     deleting first frame  ************* self.frames[0].how_old_in_ms()={self.frames[0].how_old_in_ms()}")                                
+                                #print(f"     deleting first frame  ************* self.frames[0].how_old_in_ms()={self.frames[0].how_old_in_ms()}")                                
                                 del self.frames[0]
                                 del_counter += 1
                 else : 
@@ -104,7 +104,8 @@ class ImageEventHolder :
                                 print(f"calling reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
                                 self.reset()
                         else :
-                                print(f"skipping rest reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
+                                dummmy = 0
+                                #print(f"skipping rest reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
 
                 frame_zero_age = -99999999999
                 if( len(self.frames)>0  ) :
@@ -239,7 +240,7 @@ class CaptrueMotion :
                 if text == "Occupied":
                         self.image_event_holder.add_occupied_frame(frame,contour_list)
 
-                print(f"number_of_frames={self.image_event_holder.number_of_frames()} ms_since_last_occupied={self.image_event_holder.get_ms_since_last_occupied()} ms_since_last_not_occupied={self.image_event_holder.get_ms_since_last_not_occupied()} is_occupied={self.image_event_holder.is_occupied}")
+                #print(f"number_of_frames={self.image_event_holder.number_of_frames()} ms_since_last_occupied={self.image_event_holder.get_ms_since_last_occupied()} ms_since_last_not_occupied={self.image_event_holder.get_ms_since_last_not_occupied()} is_occupied={self.image_event_holder.is_occupied}")
 
         def resize(self,image, width=None, height=None, inter=cv2.INTER_AREA):
                 # initialize the dimensions of the image to be resized and
