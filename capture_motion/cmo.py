@@ -7,6 +7,8 @@ import time
 import cv2
 import os
 import sys
+from cmosys import CmoSys
+
 
 class ImageEvent :
         def __init__(self,frame,is_occupied,json_data,image_event_holder):
@@ -32,8 +34,9 @@ class ImageEvent :
                 return(diff.microseconds/100)
 
 class ImageEventHolder :
-        def __init__(self,conf):
+        def __init__(self,conf,cmosys):
                 self.conf = conf
+                self.cmosys = cmosys
                 self.output_image_dir = self.conf["output_image_dir"]
                 self.ms_seconds_overlap = self.conf["ms_seconds_overlap"]
                 self.save_motion_files = self.conf["save_motion_files"]
@@ -47,7 +50,7 @@ class ImageEventHolder :
                 self.start_time = datetime.datetime.now()
 
         def reset(self) :
-                print("reset called")
+                self.cmosys.log.info("reset called")
                 if(self.save_motion_files and self.time_last_occupied is not None) : self.write_frames()
                 self.frames = []
                 self.time_last_occupied = None
@@ -61,7 +64,7 @@ class ImageEventHolder :
                 frame_counter = 0
                 motion_event_dir_final = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_counter).rjust(4, '0')
                 motion_event_dir = "not_ready_"+motion_event_dir_final
-                print(f"WRITING FRAMES motion_event_dir={motion_event_dir}")
+                self.cmosys.log.info(f"WRITING FRAMES motion_event_dir={motion_event_dir}")
 
                 for frame_event in self.frames :
 
@@ -101,7 +104,7 @@ class ImageEventHolder :
                 else : 
                         ms_last_occupied = self.get_ms_since_last_occupied()
                         if(ms_last_occupied>self.ms_seconds_overlap) : 
-                                print(f"calling reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
+                                self.cmosys.log.info(f"calling reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
                                 self.reset()
                         else :
                                 dummmy = 0
@@ -136,19 +139,19 @@ class CaptrueMotion :
                         print("Invalid arguments : your_config_file.json : the \"output_image_dir\" is the dir which will be processed")
                         print("You gave %i arguments" % (len(sys.argv)))
                         quit()
-                config_file = sys.argv[1]
+                ######config_file = sys.argv[1]
+                self.cmosys = CmoSys(sys.argv[1])
+                #config_json = {}
+                #with open(config_file, 'r') as f:
+                #        config_json = json.load(f)  
 
-                config_json = {}
-                with open(config_file, 'r') as f:
-                        config_json = json.load(f)  
-
-                self.conf = config_json["motion_event_generator"]
+                self.conf = self.cmosys.config_json["motion_event_generator"]
 
                 self.avg = None                
                 self.mirror = False
                 self.file_name = "cam"
                 self.motion_event_dir = None
-                self.image_event_holder = ImageEventHolder(self.conf)
+                self.image_event_holder = ImageEventHolder(self.conf,self.cmosys)
 
 
         def grab_frames_from_files(self,relevant_path) :
@@ -188,7 +191,7 @@ class CaptrueMotion :
                 gray = cv2.GaussianBlur(gray, (21, 21), 0)
                 # if the average frame is None, initialize it
                 if self.avg is None:
-                        print("[INFO] starting background model...")
+                        self.cmosys.log.info("starting background model")
                         self.avg = gray.copy().astype("float")
                         return
                 # accumulate the weighted average between the current frame and
@@ -272,3 +275,13 @@ class CaptrueMotion :
 
                 # return the resized image
                 return resized     
+
+
+
+#cmo = cmo.CaptrueMotion()
+#cmo.grab_frames_from_files('../../test_data/images_1/')
+#cmo.grab_frames_from_files('/home/mdm/storage/proc_images/')
+#cmo.grab_frames_from_files('../../test_data/images_2/')
+
+cmo = CaptrueMotion()
+cmo.grab_frames_from_camera()

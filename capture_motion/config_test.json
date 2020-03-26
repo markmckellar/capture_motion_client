@@ -1,5 +1,7 @@
 {
 
+	"me_group":"pet_door",
+	"not_ready_tag":"not_ready",
 	"motion_event_generator":{
 		"active":true,
 		"show_video": false,

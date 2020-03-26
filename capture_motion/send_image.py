@@ -21,6 +21,7 @@ config_file = sys.argv[1]
 #endPoint = "/uploadfile"
 logging.basicConfig(format='%(asctime)s : %(message)s',stream=sys.stdout,level=logging.DEBUG)
 
+
 while(True) :
 	config_json = {}
 	with open(config_file, 'r') as f: config_json = json.load(f)   
@@ -34,6 +35,8 @@ while(True) :
 	# 		"endpoint":"/uploadfile",
 	# 		"delete_when_done":true
 	# 	},
+	sleep_time = config["sleep_time"]
+
 	
 	if(config["active"])  :
 		watch_dir = config["watch_dir"] 
@@ -55,8 +58,9 @@ while(True) :
 					if( config["delete_when_done"]) :
 						os.remove(full_file_name) 
 			except :
-				logging.info("Unexpected error sending file:", sys.exc_info()[0])
-		sleep_time = config["sleep_time"]
+				logging.info("Unexpected error sending file (will sleep):", sys.exc_info()[0])
+				print(f"sleeping for {sleep_time}...")
+				time.sleep(sleep_time)
 		print(f"sleeping for {sleep_time}...")
 		time.sleep(sleep_time)
 	

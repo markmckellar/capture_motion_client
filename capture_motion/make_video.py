@@ -8,45 +8,148 @@ import json
 import time
 import shutil
 import subprocess
+from shutil import copyfile
+from cmosys import CmoSys
 
 
 class MakeVideo :
 
-    def __init__(self):
-        self.xxxx = 0
+    def __init__(self,comfig_file):
+        self.cmosys = CmoSys(comfig_file)
 
 
-    def make_video_from_image_dir_ffmpeg(self,image_folder,image_input_pattern,json_name,video_name,video_json) :
+    def make_video_from_image_dir_ffmpeg(self,image_folder,image_input_pattern,json_name,video_name,output_image_dir,video_json) :
+            os.makedirs(output_image_dir+"/images", exist_ok=True)
+
+            ### 1 : make the video
             command = f"ffmpeg -y -framerate 24 -i {image_folder}/{image_input_pattern} -vf \"pad=ceil(iw/2)*2:ceil(ih/2)*2\" {video_name}"
-            print(f"running:{command}")
+            self.cmosys.log.info(f"running:{command}")
             os.system(command)
 
+            ### 2 : Find he length of the video
             command = f"ffprobe {video_name} -show_format 2>&1 | sed -n 's/duration=//p'"
-            print(f"running:{command}")
-            #video_json["me_time"] = os.system(command)
+            self.cmosys.log.info(f"running:{command}")
             run_time =  subprocess.check_output(command, shell=True)
-            print(f"got run_time of {run_time}")
+            self.cmosys.log.info(f"got run_time of {run_time}")
             try :
             	video_json["me_time"] = float(run_time.strip().decode())
             except :
-            	print(f"got error converting run_time of {run_time}")
-            #video_json["me_time"] = os.popen(command).read()
-            #tiiiiiiiiiiime = os.popen(command).read()
+            	self.cmosys.log.info(f"got error converting run_time of {run_time}")
 
-            all_json_files = [jsonFile for jsonFile in os.listdir(image_folder) if jsonFile.endswith("json")]
+
+            ### 3 : move over any imags
+            # make the dir if it does not exist
+            #os.makedirs(os.path.dirname(output_image_dir), exist_ok=True)
+
+            rep_image = None
+
+            all_image_files = [imageFile for imageFile in os.listdir(image_folder) if imageFile.endswith(".jpg")]
+            all_image_files.sort()
+            total_files = len(all_image_files)
+
+            counter = 0
+            for image_file in all_image_files :
+                    # str(self.motion_event_counter).rjust(4, '0')
+                    src = image_folder+"/"+image_file
+                    dst = output_image_dir+"/images/"+image_file
+                    self.cmosys.log.info(f"output_image_dir={output_image_dir} src={src} dest={dst}")
+                    copyfile(src, dst)
+                    video_json["me_detal_array"].append(image_file)
+                    counter += 1
+                    if( (counter/total_files) >= 0.5 and rep_image is None ) : rep_image = image_file
+
+            if(rep_image is not None) :
+                src = image_folder+"/"+rep_image
+                dst = output_image_dir+"/rep_image.jpg"
+                copyfile(src, dst)
+                video_json["me_rep_image"] = "rep_image.jpg"
+            
+            ### 4 : grab all of the json
+            all_json_files = [jsonFile for jsonFile in os.listdir(image_folder) if jsonFile.endswith(".json")]
             all_json_files.sort()
 
             for json_file in all_json_files :
                     motion_event_json = {}
                     with open(image_folder+"/"+json_file, 'r') as f:
                         motion_event_json = json.load(f)   
-                        video_json["me_array"].append(motion_event_json)
+                        video_json["me_detal_array"].append(motion_event_json)
 
-            with open(json_name, 'w') as outfile:
+            ### 5 : write out the json
+            with open( json_name, 'w') as outfile:
                                 outfile.write( json.dumps(video_json,indent=4) )
 
 
- 
+
+
+    def process(self) :
+        
+        self.config = self.cmosys.config_json["motion_event_processor"]
+
+        # is it turned on?
+        if(self.config["active"])  :
+
+            folder = self.config["watch_dir"]
+            self.cmosys.log.info(f"starting processing:folder={folder}")
+
+            subfolders = [ f.path for f in os.scandir(folder) if f.is_dir() ]
+            subfolders.sort()  
+
+            #make_video = MakeVideo()
+
+            # look in the folder and process each file
+            for image_dir in subfolders: 
+                size = None
+                img_array_for_a_dir = []
+
+                # then the files...
+                image_dir_base = os.path.basename(image_dir)
+
+                ### If the file has "not_ready" in it do not procss
+                if "not_ready" not in image_dir_base :
+                    # we make a video...
+                    video_name = f"{self.config['output_dir']}/{image_dir_base}/movie.mp4"
+                    # we make a master json file...
+                    json_name = f"{self.config['output_dir']}/{image_dir_base}/me_data.json"
+
+                    # we write so images to an out dir
+                    output_image_dir = f"{self.config['output_dir']}/{image_dir_base}"
+
+                    image_input_pattern = self.config["image_input_pattern"]
+                    self.cmosys.log.info(f"processing:image_dir={image_dir} image_input_pattern={image_input_pattern} write to={video_name} image_dir_base={image_dir_base}")
+                    me_name = time.strftime("%Y%m%d")
+
+
+                    self.make_video_from_image_dir_ffmpeg(
+                        image_dir,
+                        image_input_pattern,
+                        json_name,
+                        video_name,
+                        output_image_dir,
+                        {
+                            "me_group":self.cmosys.config_json["me_group"],
+                            "me_event_group":me_name,
+                            "me_name":image_dir_base,
+                            "me_tag":image_dir_base,
+                            "me_image_array":[],
+                            "me_detal_array":[],
+                            "me_time":-1,
+                            "me_video_name":"movie.mp4",
+                            "me_rep_image":"rep_image.jpg",
+                            "me_json_name":"medata.json"
+                        })
+                
+
+                try :
+                    if(self.config["delete_when_done"]) : shutil.rmtree(image_dir)
+                except :
+                    self.cmosys.log.info(f"had an error removing {image_dir}")
+
+    def runForever(self) :
+        while(True) :
+            self.process()
+            sleep_time = self.config["sleep_time"]
+            self.cmosys.log.info(f"sleeping for {sleep_time}...")
+            time.sleep(sleep_time)
 
 if(len(sys.argv)!=2) :
     print("Invalid arguments : your_config_file.json : the \"output_image_dir\" is the dir which will be processed")
@@ -54,92 +157,5 @@ if(len(sys.argv)!=2) :
     quit()
 config_file = sys.argv[1]
 
-      
-while(True) :
-
-    config_json = {}
-    with open(config_file, 'r') as f:
-            config_json = json.load(f)   
-    config = config_json["motion_event_processor"]
-    if(config["active"])  :
-
-        folder = config["watch_dir"]
-        print(f"starting processing:folder={folder}")
-
-        subfolders = [ f.path for f in os.scandir(folder) if f.is_dir() ]
-        subfolders.sort()  
-
-        make_video = MakeVideo()
-        for image_dir in subfolders: 
-            size = None
-            img_array_for_a_dir = []
-
-            # then the files...
-            image_dir_base = os.path.basename(image_dir)
-
-            if "not_ready" not in image_dir_base :
-                video_name = config["output_dir"]+"/"+image_dir_base+".mp4"
-                json_name = config["output_dir"]+"/"+image_dir_base+".json"
-
-                image_input_pattern = config["image_input_pattern"]
-                print(f"processing:image_dir={image_dir} image_input_pattern={image_input_pattern} write to={video_name} image_dir_base={image_dir_base}")
-                make_video.make_video_from_image_dir_ffmpeg(
-                    image_dir,
-                    image_input_pattern,
-                    json_name,
-                    video_name,
-                    {
-                        "me_tag":image_dir_base,
-                        "me_array":[],
-                        "me_time":-1,
-                        "me_video_name":image_dir_base+".mp4",
-                        "me_json_name":image_dir_base+".json"
-                    })
-            
-
-            try :
-            	if(config["delete_when_done"]) : shutil.rmtree(image_dir)
-            except :
-            	print(f"had an error removing {image_dir}")
-
-        sleep_time = config["sleep_time"]
-        print(f"sleeping for {sleep_time}...")
-        time.sleep(sleep_time)
-        
-
-
-
-
-
-
-
-
-
-
-   # def make_video_from_image_dir(self,image_folder,video_name,image_ends_with) :
-    #     images = [img for img in os.listdir(image_folder) if img.endswith(image_ends_with)]
-    #     images.sort()
-    #     frame = cv2.imread(os.path.join(image_folder, images[0]))
-    #     height, width, layers = frame.shape
-
-    #     video = cv2.VideoWriter(video_name, 0, 1, (width,height))
-
-    #     for image in images:
-    #         video.write(cv2.imread(os.path.join(image_folder, image)))
-
-    #     cv2.destroyAllWindows()
-    #     video.release()
-
-
-
-# get the config file 
-	# "motion_event_processor":{
-	# 	"active":true,
-	# 	"watch_dir":"./images",
-	# 	"output_dir":"./uploads",
-	# 	"movie_type":"mp4",
-	# 	"make_combined_move":true,
-	# 	"make_event_movies":true,
-	# 	"out_images":true,
-	# 	"delete_when_done":true
-	# },
+mv = MakeVideo(config_file)
+mv.runForever()
