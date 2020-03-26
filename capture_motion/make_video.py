@@ -54,15 +54,15 @@ class MakeVideo :
                     dst = output_image_dir+"/images/"+image_file
                     self.cmosys.log.info(f"output_image_dir={output_image_dir} src={src} dest={dst}")
                     copyfile(src, dst)
-                    video_json["me_detal_array"].append(image_file)
+                    video_json["me_image_array"].append(image_file)
                     counter += 1
                     if( (counter/total_files) >= 0.5 and rep_image is None ) : rep_image = image_file
 
             if(rep_image is not None) :
                 src = image_folder+"/"+rep_image
-                dst = output_image_dir+"/rep_image.jpg"
+                dst = output_image_dir+"/me_rep_image.jpg"
                 copyfile(src, dst)
-                video_json["me_rep_image"] = "rep_image.jpg"
+                video_json["me_rep_image"] = "me_rep_image.jpg"
             
             ### 4 : grab all of the json
             all_json_files = [jsonFile for jsonFile in os.listdir(image_folder) if jsonFile.endswith(".json")]
@@ -83,6 +83,7 @@ class MakeVideo :
 
     def process(self) :
         
+        self.cmosys.refreshConfig()
         self.config = self.cmosys.config_json["motion_event_processor"]
 
         # is it turned on?
@@ -105,14 +106,15 @@ class MakeVideo :
                 image_dir_base = os.path.basename(image_dir)
 
                 ### If the file has "not_ready" in it do not procss
-                if "not_ready" not in image_dir_base :
+                if self.cmosys.notReadyTag() not in image_dir_base :
                     # we make a video...
-                    video_name = f"{self.config['output_dir']}/{image_dir_base}/movie.mp4"
+                    not_ready_dir = f"{image_dir_base}_{self.cmosys.notReadyTag()}"
+                    video_name = f"{self.config['output_dir']}/{not_ready_dir}/me_movie.mp4"
                     # we make a master json file...
-                    json_name = f"{self.config['output_dir']}/{image_dir_base}/me_data.json"
+                    json_name = f"{self.config['output_dir']}/{not_ready_dir}/me_data.json"
 
                     # we write so images to an out dir
-                    output_image_dir = f"{self.config['output_dir']}/{image_dir_base}"
+                    output_image_dir = f"{self.config['output_dir']}/{not_ready_dir}"
 
                     image_input_pattern = self.config["image_input_pattern"]
                     self.cmosys.log.info(f"processing:image_dir={image_dir} image_input_pattern={image_input_pattern} write to={video_name} image_dir_base={image_dir_base}")
@@ -133,16 +135,17 @@ class MakeVideo :
                             "me_image_array":[],
                             "me_detal_array":[],
                             "me_time":-1,
-                            "me_video_name":"movie.mp4",
-                            "me_rep_image":"rep_image.jpg",
-                            "me_json_name":"medata.json"
+                            "me_video_name":"me_movie.mp4",
+                            "me_rep_image":"me_rep_image.jpg",
+                            "me_json_name":"me_data.json"
                         })
-                
+                    os.rename(output_image_dir,f"{self.config['output_dir']}/{image_dir_base}")
 
-                try :
-                    if(self.config["delete_when_done"]) : shutil.rmtree(image_dir)
-                except :
-                    self.cmosys.log.info(f"had an error removing {image_dir}")
+
+                    try :
+                        if(self.config["delete_when_done"]) : shutil.rmtree(image_dir)
+                    except :
+                        self.cmosys.log.info(f"had an error removing {image_dir}")
 
     def runForever(self) :
         while(True) :

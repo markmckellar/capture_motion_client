@@ -23,9 +23,19 @@ class CmoSys:
     def getAsJsonString(self) :
         return("xyz")
 
+    def notReadyTag(self) :
+        return(self.config_json['not_ready_tag'])
+
 
     def refreshConfig(self) :
         self.log.info(f"refresh config:{self.config_file_name}")
-        self.config_json = None
-        with open(self.config_file_name, 'r') as f:
-            self.config_json = json.load(f)   
+        self.config_json = self.readInJsonFile(self.config_file_name)
+        #with open(self.config_file_name, 'r') as f:
+        #    self.config_json = json.load(f)   
+
+    def readInJsonFile(self,json_file) :
+        self.log.debug(f"loading json :{json_file}")
+        json_object = None
+        with open(json_file, 'r') as f:
+            json_object = json.load(f)  
+        return(json_object)

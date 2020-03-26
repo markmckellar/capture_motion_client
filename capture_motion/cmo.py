@@ -63,7 +63,7 @@ class ImageEventHolder :
                 # output_image_dir
                 frame_counter = 0
                 motion_event_dir_final = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_counter).rjust(4, '0')
-                motion_event_dir = "not_ready_"+motion_event_dir_final
+                motion_event_dir = f"{self.cmosys.notReadyTag()}_{motion_event_dir_final}"
                 self.cmosys.log.info(f"WRITING FRAMES motion_event_dir={motion_event_dir}")
 
                 for frame_event in self.frames :
