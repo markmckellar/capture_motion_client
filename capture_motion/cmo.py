@@ -18,7 +18,8 @@ class ImageEvent :
                 self.json_data = {
                         "contours":json_data,
                         "occupied":is_occupied,
-                        "event_time":self.event_time.microsecond/100,
+                        "event_time_ms":self.event_time.microsecond/100,
+                        "event_time_iso":self.event_time.isoformat(),
                         "last_occupied_ago_in_ms":image_event_holder.get_ms_since_last_occupied(),
                         "ms_since_last_occupied":image_event_holder.get_ms_since_last_occupied(),
                         "event_start_time":image_event_holder.start_time.microsecond/100,

@@ -72,7 +72,7 @@ class MakeVideo :
                     motion_event_json = {}
                     with open(image_folder+"/"+json_file, 'r') as f:
                         motion_event_json = json.load(f)   
-                        video_json["me_detal_array"].append(motion_event_json)
+                        video_json["me_delta_array"].append(motion_event_json)
 
             ### 5 : write out the json
             with open( json_name, 'w') as outfile:
@@ -133,7 +133,7 @@ class MakeVideo :
                             "me_name":image_dir_base,
                             "me_tag":image_dir_base,
                             "me_image_array":[],
-                            "me_detal_array":[],
+                            "me_delta_array":[],
                             "me_time":-1,
                             "me_video_name":"me_movie.mp4",
                             "me_rep_image":"me_rep_image.jpg",
