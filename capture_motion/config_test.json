@@ -10,7 +10,9 @@
 		"output_image_dir": "./images",
 		"ms_seconds_overlap": 5000,
 		"delta_thresh": 5,
-		"min_area": 5000
+		"min_area": 5000,
+		"max_frames":2000,
+		"trim_empty_frames_ms":2000
 	},
 	"motion_event_processor":{
 		"active":true,

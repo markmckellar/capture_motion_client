@@ -14,8 +14,10 @@ class ImageEventHolder :
                 self.output_image_dir = self.conf["output_image_dir"]
                 self.ms_seconds_overlap = self.conf["ms_seconds_overlap"]
                 self.save_motion_files = self.conf["save_motion_files"]
+                self.max_frames = self.conf["max_frames"]
 
 
+                self.trim_empty_frames_ms =  self.conf["trim_empty_frames_ms"]
                 self.frames = []
                 self.time_last_occupied = None
                 self.time_last_empty = None
@@ -32,8 +34,41 @@ class ImageEventHolder :
                 self.motion_event_counter += 1
                 self.start_time = datetime.datetime.now()
 
+        def get_first_occupied(self) :
+                for frame_event in self.frames :
+                        if(frame_event.is_occupied) :
+                                return(frame_event)        
+
+        def get_last_occupied(self) :
+                index = self.number_of_frames()-1
+                while index>= 0 :
+                        frame_event = self.frames[index]
+                        index = index - 1
+                        if(frame_event.is_occupied) :
+                                return(frame_event)      
+
+        def trim_empty_frames(self,trim_ms) :
+                self.cmosys.log.info(f"trim_empty_frames start : trim_ms={trim_ms} #frames:{self.number_of_frames()} ")
+                first = self.get_first_occupied()
+                last = self.get_last_occupied()
+
+                while( self.number_of_frames()>0  
+                        and not self.frames[0].is_occupied 
+                        and abs(first.distance_in_ms(self.frames[0]))>trim_ms ) :
+                                #self.cmosys.log.info(f"   distance={first.distance_in_ms(self.frames[0])} occupied={self.frames[0].is_occupied}")
+                                del self.frames[0]
+
+                self.cmosys.log.info(f"trim_empty_frames after trim begin : #frames:{self.number_of_frames()} ")
+
+                while( self.number_of_frames()>0  
+                        and not self.frames[   (self.number_of_frames()-1)    ].is_occupied 
+                        and abs(last.distance_in_ms(   self.frames[   (self.number_of_frames()-1)    ]   ) )>trim_ms) :
+                                del self.frames[   (self.number_of_frames()-1)    ]
+                self.cmosys.log.info(f"trim_empty_frames after trim end  : #frames:{self.number_of_frames()} ")
 
         def write_frames(self) :
+
+                self.trim_empty_frames(self.trim_empty_frames_ms)
                 # output_image_dir
                 frame_counter = 0
                 motion_event_dir_final = time.strftime("%Y%m%d_%H%M%S")+"_"+str(self.motion_event_counter).rjust(4, '0')
@@ -63,6 +98,7 @@ class ImageEventHolder :
                         self.cmosys.log.info(f"add 1st occupied frame frame#={self.number_of_frames()} f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso} new_event={new_event.event_time_iso}")
                 self.time_last_occupied = datetime.datetime.now()
                 self.is_occupied = True
+                self.check_for_max()
 
         def add_empty_frame(self,frame,json_data) :
                 self.frames.append( ImageEvent(frame,False,json_data,self))
@@ -89,6 +125,7 @@ class ImageEventHolder :
                 if( len(self.frames)>0  ) :
                         frame_zero_age = self.frames[0].how_old_in_ms()
                 #self.cmosys.log.info(f"     frames={len(self.frames)} del_counter={del_counter} frame_zero_age={frame_zero_age} ms_seconds_overlap={self.ms_seconds_overlap} ms_last_occupied={ms_last_occupied}")
+                self.check_for_max()
                 
         def get_ms_since_last_occupied(self) :
                 use_date = self.time_last_occupied
@@ -105,5 +142,7 @@ class ImageEventHolder :
         def number_of_frames(self) :
                 return( len(self.frames) )
 
-        # def check_for_max(self) :
-                #         if(self.number_of_frames()>2000): self.reset()
+        def check_for_max(self) :
+                if(self.number_of_frames()>self.max_frames): 
+                        self.cmosys.log.info(f"max fames reached! {self.number_of_frames()} start_time={self.start_time} time_last_occupied={self.time_last_occupied} f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso} new_event={new_event.event_time_iso}")
+                        self.reset()

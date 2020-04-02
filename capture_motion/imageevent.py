@@ -31,3 +31,7 @@ class ImageEvent :
                 diff = datetime.datetime.now() - self.event_time
                 return( diff.total_seconds()*1000 )
 
+        def distance_in_ms(self,image_event) :
+                diff = image_event.event_time - self.event_time
+                return( diff.total_seconds()*1000 )
+
