@@ -57,9 +57,10 @@ class ImageEventHolder :
                 os.rename(self.output_image_dir+"/"+motion_event_dir,self.output_image_dir+"/"+motion_event_dir_final)
 
         def add_occupied_frame(self,frame,json_data) :
-                self.frames.append( ImageEvent(frame,True,json_data,self) )
+                new_event =  ImageEvent(frame,True,json_data,self)
+                self.frames.append(new_event)
                 if(self.time_last_occupied is None) :
-                        self.cmosys.log.info(f"add 1st occupied frame frame#={self.number_of_frames()} f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso}")
+                        self.cmosys.log.info(f"add 1st occupied frame frame#={self.number_of_frames()} f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso} new_event={new_event.event_time_iso}")
                 self.time_last_occupied = datetime.datetime.now()
                 self.is_occupied = True
 

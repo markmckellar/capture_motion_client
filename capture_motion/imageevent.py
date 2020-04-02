@@ -29,4 +29,5 @@ class ImageEvent :
                 image_event_holder.number_of_frames()
         def how_old_in_ms(self) :
                 diff = datetime.datetime.now() - self.event_time
-                return(diff.microseconds/100)
+                return( diff.total_seconds()*1000 )
+
