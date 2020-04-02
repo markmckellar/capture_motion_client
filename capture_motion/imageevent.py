@@ -11,6 +11,7 @@ class ImageEvent :
                 self.frame = frame
                 self.event_time = datetime.datetime.now()
                 self.is_occupied = is_occupied
+                self.event_time_iso = self.event_time.isoformat()
                 self.json_data = {
                         "contours":json_data,
                         "occupied":is_occupied,

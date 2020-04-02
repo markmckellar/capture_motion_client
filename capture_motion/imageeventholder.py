@@ -40,14 +40,14 @@ class ImageEventHolder :
                 motion_event_dir = f"{self.cmosys.notReadyTag()}_{motion_event_dir_final}"
                 self.cmosys.log.info(f"WRITING FRAMES motion_event_dir={motion_event_dir}")
 
+                self.cmosys.log.info(f"     f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso}")
+
                 for frame_event in self.frames :
 
                         full_output_dir = self.output_image_dir+"/"+motion_event_dir
                         # Create target Directory if don't exist
                         if not os.path.exists(full_output_dir):os.mkdir(full_output_dir)
                         output_file_name = str(frame_counter).rjust(5, '0')
-                        ###########print(f"     WRITING FRAMES full_output_dir={full_output_dir} output_file_name={output_file_name}")
-                        #print("XXXXXXXXXXXXXXXXXXXXXXXXX : "+ str(frame_event.json_data) )
                         cv2.imwrite(full_output_dir+"/" + output_file_name+".jpg", frame_event.frame)
                         with open(full_output_dir+"/" + output_file_name+".json", 'w') as outfile:
                                 outfile.write( json.dumps(frame_event.json_data,indent=4) )
@@ -58,6 +58,8 @@ class ImageEventHolder :
 
         def add_occupied_frame(self,frame,json_data) :
                 self.frames.append( ImageEvent(frame,True,json_data,self) )
+                if(self.time_last_occupied is None) :
+                        self.cmosys.log.info(f"add 1st occupied frame frame#={self.number_of_frames()} f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso}")
                 self.time_last_occupied = datetime.datetime.now()
                 self.is_occupied = True
 
@@ -70,7 +72,7 @@ class ImageEventHolder :
                 ms_last_occupied = 0
                 if(self.time_last_occupied is None) :
                         while( self.number_of_frames()>0  and self.frames[0].how_old_in_ms()>self.ms_seconds_overlap) :
-                                #print(f"     deleting first frame  ************* self.frames[0].how_old_in_ms()={self.frames[0].how_old_in_ms()}")                                
+                                #self.cmosys.log.info(f"     deleting first frame  ************* self.frames[0].how_old_in_ms()={self.frames[0].how_old_in_ms()}")                                
                                 del self.frames[0]
                                 del_counter += 1
                 else : 
@@ -80,24 +82,24 @@ class ImageEventHolder :
                                 self.reset()
                         else :
                                 dummmy = 0
-                                #print(f"skipping rest reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
+                                #self.cmosys.log.info(f"skipping rest reset ms_last_occupied={ms_last_occupied} ms_seconds_overlap={self.ms_seconds_overlap}")
 
                 frame_zero_age = -99999999999
                 if( len(self.frames)>0  ) :
                         frame_zero_age = self.frames[0].how_old_in_ms()
-                #print(f"     frames={len(self.frames)} del_counter={del_counter} frame_zero_age={frame_zero_age} ms_seconds_overlap={self.ms_seconds_overlap} ms_last_occupied={ms_last_occupied}")
+                #self.cmosys.log.info(f"     frames={len(self.frames)} del_counter={del_counter} frame_zero_age={frame_zero_age} ms_seconds_overlap={self.ms_seconds_overlap} ms_last_occupied={ms_last_occupied}")
                 
         def get_ms_since_last_occupied(self) :
                 use_date = self.time_last_occupied
                 if(use_date is None) : use_date = self.start_time                        
                 diff = datetime.datetime.now() - use_date
-                return(diff.microseconds/100)
+                return( diff.total_seconds()*1000 )
 
         def get_ms_since_last_not_occupied(self) :
                 use_date = self.time_last_empty
                 if(use_date is None) : use_date = self.start_time                        
                 diff = datetime.datetime.now() - use_date
-                return(diff.microseconds/100)
+                return( diff.total_seconds()*1000 )
         
         def number_of_frames(self) :
                 return( len(self.frames) )
