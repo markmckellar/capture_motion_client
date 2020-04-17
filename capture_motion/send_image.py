@@ -18,42 +18,44 @@ class SendImage :
 
 	def process(self) :
 		self.cmosys.refreshConfig()
-		self.config = cmosys.config_json["upload_server"]
-		sleep_time = self.config["sleep_time"]
-		#server_url = self.config["server"]
-		if(self.config["active"])  :
-			watch_dir = self.config["watch_dir"] 
+		for one_config in cmosys.config_json["upload_servers"] :
 
-			subfolders = [ f.path for f in os.scandir(watch_dir) if f.is_dir() ]
-			subfolders.sort()  
+			self.config = one_config
+			sleep_time = self.config["sleep_time"]
+			#server_url = self.config["server"]
+			if(self.config["active"])  :
+				watch_dir = self.config["watch_dir"] 
 
-			for me_event_dir in subfolders:
+				subfolders = [ f.path for f in os.scandir(watch_dir) if f.is_dir() ]
+				subfolders.sort()  
 
-				if self.cmosys.notReadyTag() not in me_event_dir :
+				for me_event_dir in subfolders:
 
-					###full_me_event_dir = watch_dir + "/"+ me_event_dir
-					#print(full_file_name)
+					if self.cmosys.notReadyTag() not in me_event_dir :
+
+						###full_me_event_dir = watch_dir + "/"+ me_event_dir
+						#print(full_file_name)
 
 
-					me_data = self.cmosys.readInJsonFile(f"{me_event_dir}/{self.cmosys.config_json['me_data_file_name']}")
+						me_data = self.cmosys.readInJsonFile(f"{me_event_dir}/{self.cmosys.config_json['me_data_file_name']}")
 
-					me_group = me_data['me_group']
-					me_event_group = me_data['me_event_group']
-					me_name = me_data['me_name']
+						me_group = me_data['me_group']
+						me_event_group = me_data['me_event_group']
+						me_name = me_data['me_name']
 
-			
-					self.sendFile(me_event_dir,me_group,me_event_group,me_name,'',me_data['me_video_name'])
-					self.sendFile(me_event_dir,me_group,me_event_group,me_name,'',me_data['me_rep_image'])
-					self.sendFile(me_event_dir,me_group,me_event_group,me_name,'',me_data['me_json_name'])
-					for image_file in me_data['me_image_array'] :
-						self.sendFile(me_event_dir+"/images",me_group,me_event_group,me_name,'images',image_file)
+				
+						self.sendFile(me_event_dir,me_group,me_event_group,me_name,'',me_data['me_video_name'])
+						self.sendFile(me_event_dir,me_group,me_event_group,me_name,'',me_data['me_rep_image'])
+						self.sendFile(me_event_dir,me_group,me_event_group,me_name,'',me_data['me_json_name'])
+						if(self.config["send_images"]) :
+							for image_file in me_data['me_image_array'] :
+								self.sendFile(me_event_dir+"/images",me_group,me_event_group,me_name,'images',image_file)
 
-					if(self.config["delete_when_done"]) : 
-						shutil.rmtree(me_event_dir) 
+						if(self.config["delete_when_done"]) : 
+							shutil.rmtree(me_event_dir) 
 
-	def sendFile(self,me_event_dir,me_group,me_event_group,me_name,image_dir,file_name) :
 
-		
+	def sendFile(self,me_event_dir,me_group,me_event_group,me_name,image_dir,file_name) :	
 		server_url = self.config["server"]
 		sleep_time = self.config["sleep_time"]
 		watch_dir = self.config["watch_dir"]

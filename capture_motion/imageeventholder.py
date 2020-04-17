@@ -144,5 +144,5 @@ class ImageEventHolder :
 
         def check_for_max(self) :
                 if(self.number_of_frames()>self.max_frames): 
-                        self.cmosys.log.info(f"max fames reached! {self.number_of_frames()} start_time={self.start_time} time_last_occupied={self.time_last_occupied} f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso} new_event={new_event.event_time_iso}")
+                        self.cmosys.log.info(f"max fames reached! {self.number_of_frames()} start_time={self.start_time} time_last_occupied={self.time_last_occupied} f[0].msage={ self.frames[0].how_old_in_ms()} f[0].iso={self.frames[0].event_time_iso}")
                         self.reset()
